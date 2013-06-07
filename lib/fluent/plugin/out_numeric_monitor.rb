@@ -84,11 +84,15 @@ class Fluent::NumericMonitorOutput < Fluent::Output
   def watch
     @last_checked = Fluent::Engine.now
     while true
-      sleep 0.5
-      if Fluent::Engine.now - @last_checked > @count_interval
-        now = Fluent::Engine.now
-        flush_emit
-        @last_checked = now
+      begin
+        sleep 0.5
+        if Fluent::Engine.now - @last_checked > @count_interval
+          now = Fluent::Engine.now
+          flush_emit
+          @last_checked = now
+        end
+      rescue => e
+        $log.warn "out_numeric_monitor: #{e.class} #{e.message}"
       end
     end
   end
@@ -249,5 +253,7 @@ class Fluent::NumericMonitorOutput < Fluent::Output
     countups(tag, min, max, sum, num, sample)
 
     chain.next
+  rescue => e
+    $log.warn "out_numeric_monitor: #{e.class} #{e.message}"
   end
 end
