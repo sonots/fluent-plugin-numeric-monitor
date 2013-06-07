@@ -7,6 +7,7 @@ class Fluent::NumericMonitorOutput < Fluent::Output
   config_param :unit, :string, :default => nil
   config_param :tag, :string, :default => 'monitor'
   config_param :tag_prefix, :string, :default => nil
+  config_param :amplifier, :float, :default => 1.0
 
   config_param :output_per_tag, :bool, :default => false
   config_param :aggregate, :default => 'tag' do |val|
@@ -132,6 +133,11 @@ class Fluent::NumericMonitorOutput < Fluent::Output
           i -= 1
         end
         output[key_prefix + "percentile_#{p}"] = sorted[i]
+      end
+    end
+    if @amplifier
+      output.each do |key, val|
+        output[key] = val * @amplifier if val
       end
     end
     output
