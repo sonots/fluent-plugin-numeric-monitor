@@ -74,6 +74,10 @@ Output messages like:
 
     The limit number of sampling. Default is `1000000`. 
 
+* store\_file
+
+    Store internal data into file on shutdown, and load on starting. 
+
 ## TODO
 
 * more tests

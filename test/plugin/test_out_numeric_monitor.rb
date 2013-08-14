@@ -352,4 +352,39 @@ class NumericMonitorOutputTest < Test::Unit::TestCase
     assert_equal 2, r['key_prefix_avg']
     assert_equal 6, r['key_prefix_num']
   end
+
+  def test_store_file
+    dir = "test/tmp"
+    Dir.mkdir dir unless Dir.exist? dir
+    file = "#{dir}/test.dat"
+    File.unlink file if File.exist? file
+
+    # test store
+    d = create_driver(CONFIG + %[store_file #{file}])
+    d.run do
+      d.instance.flush_emit
+      d.emit({'field1' => 1})
+      d.emit({'field1' => 2})
+      d.emit({'field1' => 3})
+      d.instance.shutdown
+    end
+    stored_count = d.instance.count
+    assert File.exist? file
+
+    # test load
+    d = create_driver(CONFIG + %[store_file #{file}])
+    d.run do
+      loaded_count = d.instance.count
+      assert_equal stored_count, loaded_count
+    end
+
+    # test not to load if config is changed
+    d = create_driver(CONFIG + %[monitor_key foobar store_file #{file}])
+    d.run do
+      loaded_count = d.instance.count
+      assert_equal({}, loaded_count)
+    end
+
+    File.unlink file
+  end
 end

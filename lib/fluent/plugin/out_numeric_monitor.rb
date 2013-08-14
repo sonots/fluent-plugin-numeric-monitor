@@ -7,6 +7,7 @@ class Fluent::NumericMonitorOutput < Fluent::Output
   config_param :unit, :string, :default => nil
   config_param :tag, :string, :default => 'monitor'
   config_param :tag_prefix, :string, :default => nil
+  config_param :store_file, :string, :default => nil
 
   config_param :output_per_tag, :bool, :default => false
   config_param :aggregate, :default => 'tag' do |val|
@@ -66,6 +67,7 @@ class Fluent::NumericMonitorOutput < Fluent::Output
 
   def start
     super
+    load_from_file
     start_watch
   end
 
@@ -73,6 +75,7 @@ class Fluent::NumericMonitorOutput < Fluent::Output
     super
     @watcher.terminate
     @watcher.join
+    store_to_file
   end
 
   def start_watch
@@ -244,4 +247,44 @@ class Fluent::NumericMonitorOutput < Fluent::Output
 
     chain.next
   end
+
+  def store_to_file
+    return unless @store_file
+
+    begin
+      Pathname.new(@store_file).open('wb') do |f|
+        Marshal.dump({
+          :count            => @count,
+          :aggregate        => @aggregate,
+          :percentiles      => @percentiles,
+          :monitor_key      => @monitor_key,
+          :samples_limit    => @samples_limit,
+        }, f)
+      end
+    rescue => e
+      $log.warn "out_numeric_monitor: Can't write store_file #{e.class} #{e.message}"
+    end
+  end
+
+  def load_from_file
+    return unless @store_file
+    return unless (f = Pathname.new(@store_file)).exist?
+
+    begin
+      f.open('rb') do |f|
+        stored = Marshal.load(f)
+        if stored[:aggregate] == @aggregate and
+          stored[:percentiles] == @percentiles and
+          stored[:monitor_key]  == @monitor_key and
+          stored[:samples_limit] == @samples_limit
+          @count = stored[:count]
+        else
+          $log.warn "out_numeric_monitor: configuration param was changed. ignore stored data"
+        end
+      end
+    rescue => e
+      $log.warn "out_numeric_monitor: Can't load store_file #{e.class} #{e.message}"
+    end
+  end
+
 end
